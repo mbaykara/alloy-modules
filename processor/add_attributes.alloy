@@ -1,0 +1,62 @@
+argument "metrics_output" {
+  comment = "Target component array for metrics output"
+}
+
+argument "logs_output" {
+  comment = "Target component array for logs output"
+}
+
+argument "traces_output" {
+  comment = "Target component array for traces output"
+}
+
+// Define the processor component itself within the module scope
+otelcol.processor.transform "add_resource_attributes" {
+  error_mode = "ignore"
+
+  metric_statements {
+    context    = "resource"
+    statements = [
+      `set(attributes["app_stage"], "MISSING") where attributes["app_stage"] == nil`,
+      `set(attributes["network_stage"], "PLACE_HOLDER")`, // Placeholder - consider making this an argument if it varies
+      `set(attributes["cluster"], "PLACE_HOLDER")`,       // Placeholder - consider making this an argument if it varies
+      `set(attributes["k8s.cluster.name"], "PLACE_HOLDER")`,// Placeholder - consider making this an argument if it varies
+    ]
+  }
+
+  log_statements {
+    context    = "resource"
+    statements = [
+      `set(attributes["app_stage"], "MISSING") where attributes["app_stage"] == nil`,
+      `set(attributes["namespace"], attributes["k8s.namespace.name"])`,
+      `set(attributes["service.namespace"], attributes["k8s.namespace.name"]) where attributes["service.namespace"] == nil`,
+      `set(attributes["pod"], attributes["k8s.pod.name"])`,
+      `set(attributes["service.name"], attributes["app.kubernetes.io/name"]) where attributes["service.name"] == nil`,
+      `set(attributes["service.name"], attributes["k8s.deployment.name"]) where attributes["service.name"] == nil`,
+      `set(attributes["service.name"], attributes["k8s.statefulset.name"]) where attributes["service.name"] == nil`,
+      `set(attributes["service.name"], attributes["k8s.daemonset.name"]) where attributes["service.name"] == nil`,
+      `set(attributes["service.version"], attributes["app.kubernetes.io/version"]) where attributes["service.version"] == nil`,
+      `set(attributes["service.instance.id"], Concat([attributes["k8s.namespace.name"], attributes["k8s.pod.name"], attributes["k8s.container.name"]], ".")) where attributes["service.instance.id"] == nil`,
+      `set(attributes["network_stage"], "PLACE_HOLDER")`, // Placeholder - consider making this an argument if it varies
+      `set(attributes["cluster"], "PLACE_HOLDER")`,       // Placeholder - consider making this an argument if it varies
+      `set(attributes["k8s.cluster.name"], "PLACE_HOLDER")`,// Placeholder - consider making this an argument if it varies
+    ]
+  }
+
+  trace_statements {
+    context    = "resource"
+    statements = [
+      `set(attributes["app_stage"], "MISSING") where attributes["app_stage"] == nil`,
+      `set(attributes["network_stage"], "PLACE_HOLDER")`, 
+      `set(attributes["cluster"], "PLACE_HOLDER")`,      
+      `set(attributes["k8s.cluster.name"], "PLACE_HOLDER")`,
+    ]
+  }
+
+  // Use the arguments passed to the module to define the output targets
+  output {
+    metrics = argument.metrics_output.value
+    logs    = argument.logs_output.value
+    traces  = argument.traces_output.value
+  }
+}
