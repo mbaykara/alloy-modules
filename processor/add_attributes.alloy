@@ -54,11 +54,11 @@ declare "transform" {
       ]
     }
     
-    // Use the arguments passed to the module to define the output targets
-    output {
+   
+    export "mlt" {
       metrics = argument.metrics_output.value
       logs    = argument.logs_output.value
       traces  = argument.traces_output.value
     }
-    }
+    
 }
