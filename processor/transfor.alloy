@@ -1,0 +1,51 @@
+declare "transform" {
+    argument "metrics_output" {
+        comment = "Where to send metrics after transformation"
+        optional = false
+    }
+    
+    argument "logs_output" {
+        comment = "Where to send logs after transformation"
+        optional = false
+    }
+    
+    argument "traces_output" {
+        comment = "Where to send traces after transformation"
+        optional = false
+    }
+          
+    otelcol.processor.transform "add_resource_attributes" {
+        error_mode = "ignore"
+        
+        metric_statements {
+            context = "resource"
+            statements = [
+                `set(attributes["k8s.cluster.name"], "FOOOO")`,
+            ]
+        }
+        
+        log_statements {
+            context = "resource"
+            statements = [
+                `set(attributes["k8s.cluster.name"], "FOOOO")`,
+            ]
+        }
+        
+        trace_statements {
+            context = "resource"
+            statements = [
+                `set(attributes["k8s.cluster.name"], "FOOOO")`,
+            ]
+        }
+        
+        output {
+            metrics = argument.metrics_output.value
+            logs = argument.logs_output.value
+            traces = argument.traces_output.value
+        }
+    }
+    
+    export "input" {
+        value = otelcol.processor.transform.add_resource_attributes.input
+    }
+}
