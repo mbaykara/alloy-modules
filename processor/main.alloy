@@ -1,3 +1,4 @@
+declare "otlp" {
 logging {
 	level = "debug"
 }
@@ -177,4 +178,4 @@ otelcol.auth.basic "grafana_cloud_creds" {
 	username = sys.env("GRAFANA_OTLP_USERNAME")
 	password = sys.env("GRAFANA_OTLP_PASSWORD")
 }
-
+}
