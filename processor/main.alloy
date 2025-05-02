@@ -1,0 +1,180 @@
+logging {
+	level = "debug"
+}
+
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "0.0.0.0:4317"
+	}
+
+	http {
+		endpoint = "0.0.0.0:4318"
+	}
+
+	output {
+		metrics = [otelcol.processor.transform.drop_unneeded_resource_attributes.input]
+		logs    = [otelcol.processor.transform.drop_unneeded_resource_attributes.input]
+		traces  = [otelcol.processor.transform.drop_unneeded_resource_attributes.input]
+	}
+}
+
+otelcol.processor.transform "drop_unneeded_resource_attributes" {
+	error_mode = "ignore"
+
+	trace_statements {
+		context    = "resource"
+		statements = [
+			"delete_key(attributes, \"k8s.pod.start_time\")",
+			"delete_key(attributes, \"os.description\")",
+			"delete_key(attributes, \"os.type\")",
+			"delete_key(attributes, \"process.command_args\")",
+			"delete_key(attributes, \"process.executable.path\")",
+			"delete_key(attributes, \"process.pid\")",
+			"delete_key(attributes, \"process.runtime.description\")",
+			"delete_key(attributes, \"process.runtime.name\")",
+			"delete_key(attributes, \"process.runtime.version\")",
+		]
+	}
+
+	metric_statements {
+		context    = "resource"
+		statements = [
+			"delete_key(attributes, \"k8s.pod.start_time\")",
+			"delete_key(attributes, \"os.description\")",
+			"delete_key(attributes, \"os.type\")",
+			"delete_key(attributes, \"process.command_args\")",
+			"delete_key(attributes, \"process.executable.path\")",
+			"delete_key(attributes, \"process.pid\")",
+			"delete_key(attributes, \"process.runtime.description\")",
+			"delete_key(attributes, \"process.runtime.name\")",
+			"delete_key(attributes, \"process.runtime.version\")",
+		]
+	}
+
+	log_statements {
+		context    = "resource"
+		statements = [
+			"delete_key(attributes, \"k8s.pod.start_time\")",
+			"delete_key(attributes, \"os.description\")",
+			"delete_key(attributes, \"os.type\")",
+			"delete_key(attributes, \"process.command_args\")",
+			"delete_key(attributes, \"process.executable.path\")",
+			"delete_key(attributes, \"process.pid\")",
+			"delete_key(attributes, \"process.runtime.description\")",
+			"delete_key(attributes, \"process.runtime.name\")",
+			"delete_key(attributes, \"process.runtime.version\")",
+		]
+	}
+
+	output {
+		metrics = [otelcol.processor.transform.add_resource_attributes.input]
+		logs    = [otelcol.processor.transform.add_resource_attributes.input]
+		traces  = [otelcol.processor.transform.add_resource_attributes.input]
+	}
+}
+
+otelcol.processor.transform "add_resource_attributes" {
+	error_mode = "ignore"
+
+	metric_statements {
+		context    = "resource"
+		statements = [
+			`set(attributes["app_stage"], "MISSING") where attributes["app_stage"] == nil`,
+			`set(attributes["network_stage"], "PLACE_HOLDER")`,
+			`set(attributes["cluster"], "PLACE_HOLDER")`,
+			`set(attributes["k8s.cluster.name"], "PLACE_HOLDER")`,
+		]
+	}
+
+	log_statements {
+		context    = "resource"
+		statements = [
+			`set(attributes["app_stage"], "MISSING") where attributes["app_stage"] == nil`,
+			`set(attributes["namespace"], attributes["k8s.namespace.name"])`,
+			`set(attributes["service.namespace"], attributes["k8s.namespace.name"]) where attributes["service.namespace"] == nil`,
+			`set(attributes["pod"], attributes["k8s.pod.name"])`,
+			`set(attributes["service.name"], attributes["app.kubernetes.io/name"]) where attributes["service.name"] == nil`,
+			`set(attributes["service.name"], attributes["k8s.deployment.name"]) where attributes["service.name"] == nil`,
+			`set(attributes["service.name"], attributes["k8s.statefulset.name"]) where attributes["service.name"] == nil`,
+			`set(attributes["service.name"], attributes["k8s.daemonset.name"]) where attributes["service.name"] == nil`,
+			`set(attributes["service.version"], attributes["app.kubernetes.io/version"]) where attributes["service.version"] == nil`,
+			`set(attributes["service.instance.id"], Concat([attributes["k8s.namespace.name"], attributes["k8s.pod.name"], attributes["k8s.container.name"]], ".")) where attributes["service.instance.id"] == nil`,
+			`set(attributes["network_stage"], "PLACE_HOLDER")`,
+			`set(attributes["cluster"], "PLACE_HOLDER")`,
+			`set(attributes["k8s.cluster.name"], "PLACE_HOLDER")`,
+		]
+	}
+
+	trace_statements {
+		context    = "resource"
+		statements = [
+			`set(attributes["app_stage"], "MISSING") where attributes["app_stage"] == nil`,
+			`set(attributes["network_stage"], "PLACE_HOLDER")`,
+			`set(attributes["cluster"], "PLACE_HOLDER")`,
+			`set(attributes["k8s.cluster.name"], "PLACE_HOLDER")`,
+		]
+	}
+
+	output {
+		metrics = [otelcol.processor.transform.filter_metric_labels.input]
+		logs    = [otelcol.processor.batch.default.input]
+		traces  = [otelcol.processor.batch.default.input]
+	}
+}
+
+otelcol.processor.transform "filter_metric_labels" {
+	error_mode = "ignore"
+
+	metric_statements {
+		context    = "datapoint"
+		statements = [
+			`keep_keys(attributes, [
+                  "app",
+                  "service_name",
+                  "app_stage",
+                  "network_stage",
+                  "instance",
+                  "marker",
+                  "job",
+                  "path",
+                  "cluster",
+                  "namespace",
+                  "action",
+                  "availability_zone",
+                  "status_code",
+                  "pod",
+                  "version",
+                  "quantile"
+              ])`,
+		]
+	}
+
+	output {
+		metrics = [otelcol.processor.batch.default.input]
+	}
+}
+
+otelcol.processor.batch "default" {
+	timeout             = "5s"
+	send_batch_size     = 2048
+	send_batch_max_size = 2048
+
+	output {
+		metrics = [otelcol.exporter.otlphttp.grafana_cloud.input]
+		logs    = [otelcol.exporter.otlphttp.grafana_cloud.input]
+		traces  = [otelcol.exporter.otlphttp.grafana_cloud.input]
+	}
+}
+
+otelcol.exporter.otlphttp "grafana_cloud" {
+	client {
+		endpoint = sys.env("GRAFANA_OTLP_ENDPOINT")
+		auth     = otelcol.auth.basic.grafana_cloud_creds.handler
+	}
+}
+
+otelcol.auth.basic "grafana_cloud_creds" {
+	username = sys.env("GRAFANA_OTLP_USERNAME")
+	password = sys.env("GRAFANA_OTLP_PASSWORD")
+}
+
